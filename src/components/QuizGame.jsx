@@ -7,21 +7,31 @@ import hard from "../assets/img/3-removebg-preview.png";
 import correct from "../assets/img/correct-removebg-preview.png";
 import incorrect from "../assets/img/incorrect-removebg-preview.png";
 
-const Game = () => {
+const QuizGame = () => {
   const [level, setLevel] = useState("easy");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [userAnswer, setUserAnswer] = useState("");
   const [feedback, setFeedback] = useState("");
   const [showResult, setShowResult] = useState(false);
+  const [correctAnswersInLevel, setCorrectAnswersInLevel] = useState(0);
+  const [highScore, setHighScore] = useState(0);
 
   useEffect(() => {
     const savedProgress = localStorage.getItem("quizProgress");
+    const savedHighScore = localStorage.getItem("quizHighScore");
+
     if (savedProgress) {
-      const { level, currentQuestionIndex, score } = JSON.parse(savedProgress);
+      const { level, currentQuestionIndex, score, correctAnswersInLevel } =
+        JSON.parse(savedProgress);
       setLevel(level);
       setCurrentQuestionIndex(currentQuestionIndex);
       setScore(score);
+      setCorrectAnswersInLevel(correctAnswersInLevel || 0);
+    }
+
+    if (savedHighScore) {
+      setHighScore(Number(savedHighScore));
     }
   }, []);
 
@@ -31,11 +41,22 @@ const Game = () => {
   const saveProgress = () => {
     localStorage.setItem(
       "quizProgress",
-      JSON.stringify({ level, currentQuestionIndex, score })
+      JSON.stringify({
+        level,
+        currentQuestionIndex,
+        score,
+        correctAnswersInLevel,
+      })
     );
   };
 
-  // Handle Answer Submission
+  const updateHighScore = (newScore) => {
+    if (newScore > highScore) {
+      setHighScore(newScore);
+      localStorage.setItem("quizHighScore", newScore);
+    }
+  };
+
   const handleSubmit = () => {
     if (!userAnswer) return;
 
@@ -46,26 +67,29 @@ const Game = () => {
         : userAnswer === currentQuestion.correctAnswer;
 
     if (isCorrect) {
-      setScore((prevScore) => {
-        const newScore =
-          prevScore + (level === "easy" ? 10 : level === "medium" ? 20 : 30);
-        saveProgress();
-        return newScore;
-      });
+      const points = level === "easy" ? 10 : level === "medium" ? 20 : 30;
+      const newScore = score + points;
+
+      setScore(newScore);
+      setCorrectAnswersInLevel((prevCount) => prevCount + 1);
       setFeedback("Correct!");
+
+      updateHighScore(newScore);
     } else {
       setFeedback("Incorrect!");
     }
 
     setUserAnswer("");
+    saveProgress();
 
     setTimeout(() => {
       if (currentQuestionIndex < currentQuestions.length - 1) {
         setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
-      } else if (isCorrect && level !== "hard") {
+      } else if (correctAnswersInLevel >= 2 && level !== "hard") {
         const nextLevel = level === "easy" ? "medium" : "hard";
         setLevel(nextLevel);
         setCurrentQuestionIndex(0);
+        setCorrectAnswersInLevel(0);
       } else {
         setShowResult(true);
       }
@@ -80,6 +104,7 @@ const Game = () => {
     setScore(0);
     setShowResult(false);
     setFeedback("");
+    setCorrectAnswersInLevel(0);
   };
 
   if (showResult) {
@@ -88,6 +113,7 @@ const Game = () => {
         <div className="restartQuiz">
           <h2>Quiz Finished!</h2>
           <p>Your final score: {score}</p>
+          <p>High Score: {highScore}</p>
           <button className="btn" onClick={restartQuiz}>
             Restart Quiz
           </button>
@@ -102,14 +128,15 @@ const Game = () => {
         <h1>Quiz Game</h1>
         <div>
           {level === "easy" ? (
-            <img src={easy} alt="" className="imgMeter" />
+            <img src={easy} alt="Easy Level" className="imgMeter" />
           ) : level === "medium" ? (
-            <img src={medium} alt="" className="imgMeter" />
+            <img src={medium} alt="Medium Level" className="imgMeter" />
           ) : (
-            <img src={hard} alt="" className="imgMeter" />
+            <img src={hard} alt="Hard Level" className="imgMeter" />
           )}
         </div>
         <p>Score: {score}</p>
+
         <div className="questionOptionsContainer">
           <div className={`question`}>
             <p
@@ -183,9 +210,17 @@ const Game = () => {
             <div className="feedbackContainer">
               <p className="feedbackText">{feedback}</p>
               {feedback === "Correct!" ? (
-                <img src={correct} alt="" className="feedbackImg" />
+                <img
+                  src={correct}
+                  alt="Correct Answer"
+                  className="feedbackImg"
+                />
               ) : (
-                <img src={incorrect} alt="" className="feedbackImg" />
+                <img
+                  src={incorrect}
+                  alt="Incorrect Answer"
+                  className="feedbackImg"
+                />
               )}
             </div>
           )}
@@ -195,4 +230,4 @@ const Game = () => {
   );
 };
 
-export default Game;
+export default QuizGame;
